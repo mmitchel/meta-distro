@@ -1,0 +1,31 @@
+Common targets are:
+    core-image-minimal (default image with initramfs)
+    core-image-full-cmdline
+    core-image-sato
+    core-image-weston
+    meta-toolchain
+    meta-toolchain-sdk
+    adt-installer
+    meta-ide-support
+
+You can also run generated qemu images with a command like 'runqemu qemux86-64'
+
+Other commonly useful commands are:
+ - 'devtool' and 'recipetool' handle common recipe tasks
+ - 'bitbake-layers' handles common layer tasks
+ - 'oe-pkgdata-util' handles common package data queries
+ - 'bitbake -c menuconfig virtual/kernel' opens kernel configuration
+
+Configuration files are in TOPDIR/conf
+Templates are in layers/meta-distro/conf/templates
+
+Build configuration:
+DISTRO     = poky-sota (from meta-updater)
+MACHINE    = qemux86-64 (from poky)
+IMAGE      = core-image-minimal (with bundled initramfs)
+TEMPLATECONF = layers/meta-distro/conf/templates
+
+Primary applications:
+- docker-moby (Docker Engine)
+- docker-compose
+- Virtualization support enabled

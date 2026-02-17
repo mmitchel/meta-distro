@@ -1,0 +1,29 @@
+# short-description: Create disk image with separate EFI, boot, and encrypted LVM partitions
+# long-description: Creates a disk image with:
+# - EFI System Partition (ESP) for UEFI boot (512MB, VFAT)
+# - Boot partition for kernels and initramfs (1GB, ext4)
+# - LUKS-encrypted partition containing LVM with rootfs and additional volumes
+
+# EFI System Partition for systemd-boot
+# Partition Type: ${PARTTYPE_ESP}
+# Filesystem UUID: ${UUID_ESP}
+part /boot/efi --source bootimg-efi --sourceparams="loader=systemd-boot" --ondisk sda --label efi --active --align 1024 --size 512M --fstype=vfat --uuid=${UUID_ESP} --part-type=${PARTTYPE_ESP}
+
+# Extended Boot Loader Partition (XBOOTLDR) for kernels and initramfs
+# Partition Type: ${PARTTYPE_XBOOTLDR}
+# Filesystem UUID: ${UUID_XBOOTLDR}
+part /boot --ondisk sda --fstype=ext4 --label boot --align 1024 --size 1024 --uuid=${UUID_XBOOTLDR} --part-type=${PARTTYPE_XBOOTLDR}
+
+# LUKS-encrypted LVM partition containing rootfs, /var, and optional data volumes
+# Partition Type: ${PARTTYPE_ROOT}
+# Root LV Filesystem UUID: ${UUID_ROOT}
+# Var LV Filesystem UUID: ${UUID_VAR}
+# Kernels and initramfs stored in rootfs (OSTree manages boot artifacts)
+# Passphrase: Set via --luks-passphrase parameter
+#   - "NULL": Uses /dev/null for automated unlock (development/testing)
+#   - "your-passphrase": Uses specified passphrase (production)
+# var volume is separate from rootfs as OSTree does not monitor /var for updates
+# varfs uses all remaining space (100%FREE)
+part / --source lvmrootfs --ondisk sda --fstype=ext4 --label cryptlvm --align 1024 --size 4096M --lvm-vg-name=vg0 --lvm-rootfs-name=rootlv --lvm-volumes="varfs:100%FREE" --luks-passphrase="NULL" --luks-name="cryptlvm" --part-type=${PARTTYPE_ROOT}
+
+bootloader --ptable gpt --timeout=5 --append="root=UUID=${UUID_ROOT} rootflags=ro rootfstype=ext4 systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"

@@ -1,0 +1,18 @@
+[Unit]
+Description=Mount /var from LVM
+Documentation=man:fstab(5) man:systemd-fstab-generator(8)
+Before=local-fs.target
+After=lvm2-activation.service
+Requires=lvm2-activation.service
+DefaultDependencies=no
+Conflicts=umount.target
+ConditionPathExists=/dev/vg0/varfs
+
+[Mount]
+What=/dev/vg0/varfs
+Where=/var
+Type=ext4
+Options=defaults
+
+[Install]
+WantedBy=local-fs.target
