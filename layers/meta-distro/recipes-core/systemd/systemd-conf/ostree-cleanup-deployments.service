@@ -1,0 +1,13 @@
+[Unit]
+Description=Cleanup old OSTree deployments (keep only A/B)
+ConditionPathExists=/ostree/repo
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ostree admin cleanup
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

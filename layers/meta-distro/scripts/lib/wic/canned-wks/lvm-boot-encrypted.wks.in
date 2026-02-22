@@ -1,0 +1,22 @@
+# short-description: Create disk image with LVM-based encryption and atomic updates
+# long-description: Creates a disk image with:
+# - EFI System Partition (ESP) for UEFI boot (512MB, VFAT, unencrypted)
+# - Extended Boot Loader Partition (XBOOTLDR) for kernels and initramfs (1GB, ext4, unencrypted)
+# - LUKS-encrypted LVM physical volume containing:
+#   - Root logical volume (rootfs, ext4)
+#   - Var logical volume (varfs, ext4, optional for OSTree compatibility)
+#
+# Uses lvmrootfs.py WIC plugin for automated LUKS + LVM setup
+# Boot sequence: Initramfs unlocks LUKS → activates LVM → mounts rootfs
+# Security: LUKS encryption MANDATORY, TPM2 integration MANDATORY for LUKS key sealing
+# REQUIRED HOST SETUP: User in 'disk' group for non-root loop device access
+
+# Root partition (will be converted to LVM+LUKS by post-build script)
+# Standard rootfs source for initial WIC image creation
+# Post-build script converts this to LVM+LUKS encrypted layout:
+# 1. BitBake creates standard WIC image with rootfs
+# 2. User runs generated script: sudo /tmp/wic-lvm-*/create-lvm-vg0.sh <rootfs_source> output.wic
+# 3. Script creates disk with: EFI (512MB) + XBOOTLDR (1GB) + LUKS-encrypted LVM
+part / --source rootfs --fstype=ext4 --size 4096M
+
+bootloader --ptable gpt --timeout=5 --append="root=UUID=${FSUUID_ROOT} rootflags=ro rootfstype=ext4 systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"

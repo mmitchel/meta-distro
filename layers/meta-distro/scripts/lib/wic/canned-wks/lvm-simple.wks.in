@@ -1,0 +1,16 @@
+# short-description: Simple direct disk image with EFI and rootfs partitions
+# long-description: Creates a disk image with:
+# - EFI System Partition (ESP) for UEFI boot (512MB, VFAT)
+# - Root partition for rootfs (ext4)
+
+# EFI System Partition for u-boot
+# Partition Type: ${PARTTYPE_ESP}
+# Filesystem UUID: ${FSUUID_ESP}
+part /boot/efi --source bootimg-efi --sourceparams="loader=u-boot" --ondisk sda --label efi --active --align 1024 --size 512M --fstype=vfat --uuid=${FSUUID_ESP} --part-type=${PARTTYPE_ESP}
+
+# Root partition - OSTree-compatible ext4 rootfs
+# Partition Type: ${PARTTYPE_ROOT}
+# Filesystem UUID: ${FSUUID_ROOT}
+part / --source rootfs --ondisk sda --fstype=ext4 --label rootfs --align 1024 --size=5000 --uuid=${FSUUID_ROOT} --part-type=${PARTTYPE_ROOT}
+
+bootloader --ptable gpt --timeout=5 --append="root=UUID=${FSUUID_ROOT} rootflags=ro rootfstype=ext4 systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"

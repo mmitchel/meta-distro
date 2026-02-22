@@ -1,0 +1,15 @@
+[Unit]
+Description=Update systemd-boot for OSTree deployment
+ConditionPathExists=/boot/loader
+After=ostree-remount.service
+Before=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/ostree admin instutil set-kargs --merge-only-if-identical
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

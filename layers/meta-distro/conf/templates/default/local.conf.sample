@@ -1,0 +1,147 @@
+#
+# This file is your local configuration file and is where all local user settings
+# are placed. The comments in this file give some guide to the options a new user
+# to the system might want to change but pretty much any configuration option can
+# be set in this file. More adventurous users can look at local.conf.extended
+# which contains other examples of configuration which can be placed in this file
+# but new users likely won't need any of them initially.
+#
+
+# Include distribution defaults
+require conf/distro/include/defaults.inc
+
+# Include machine defaults
+require conf/machine/include/defaults.inc
+
+# Machine Selection
+# Set the target machine. Example options:
+# - qemux86-64: QEMU x86-64 emulator (default, with custom settings from defaults.inc)
+# - qemuarm64: QEMU ARM 64-bit emulator
+# - beaglebone-yocto: BeagleBone Black
+# - genericx86-64: Generic x86-64 hardware
+MACHINE ??= "qemux86-64"
+
+# Distribution Selection
+# Using poky-sota from meta-updater for OTA update support
+DISTRO ?= "poky-sota"
+
+
+# Package Management
+# You can switch between different package formats: rpm, deb, ipk
+PACKAGE_CLASSES ?= "package_rpm"
+
+# WIC Image Configuration
+# WKS_FILE can be overridden to use different layouts:
+
+# - lvm-simple.wks: VFAT boot + LVM with rootfs and var volume
+# All layouts support OSTree atomic updates with multiple deployments on single partition
+#WKS_FILE = "lvm-simple.wks"
+
+# For OSTree atomic updates, no special WKS needed - works with standard layouts
+# OSTree maintains multiple deployments in /ostree/deploy/<osname>/deploy/<index>
+# Rollback: bootloader shows previous deployments at boot
+
+# EFI Bootloader Configuration
+# Using systemd-boot for UEFI boot with Secure Boot support
+EFI_PROVIDER ?= "systemd-boot"
+
+# LVM Support
+# Add LVM tools to the image for managing logical volumes at runtime
+CORE_IMAGE_EXTRA_INSTALL += "lvm2"
+
+# Systemd mount unit for /var on LVM
+# This ensures /var is mounted from /dev/vg0/varfs at boot
+CORE_IMAGE_EXTRA_INSTALL += "systemd-mount-var"
+
+# Secure Boot keys
+# Install UEFI Secure Boot keys (PK, KEK, db, dbx) to /boot partition
+CORE_IMAGE_EXTRA_INSTALL += "secureboot-keys"
+
+# Extra image install
+# Allows you to customize the contents of images
+# Docker-moby is the primary application for this distribution
+CORE_IMAGE_EXTRA_INSTALL += "docker-moby docker-compose"
+
+# Additional disk space
+EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
+
+# Disk Space Monitoring
+BB_DISKMON_DIRS ??= "\
+    STOPTASKS,${TMPDIR},1G,100K \
+    STOPTASKS,${DL_DIR},1G,100K \
+    STOPTASKS,${SSTATE_DIR},1G,100K \
+    STOPTASKS,/tmp,100M,100K \
+    HALT,${TMPDIR},100M,1K \
+    HALT,${DL_DIR},100M,1K \
+    HALT,${SSTATE_DIR},100M,1K \
+    HALT,/tmp,10M,1K"
+
+# Shared-state files from other locations
+#SSTATE_MIRRORS ?= "\
+#file://.* http://someserver.tld/share/sstate/PATH;downloadfilename=PATH \n \
+#file://.* file:///some/local/dir/sstate/PATH"
+
+# S3 download and sstate mirrors
+#SOURCE_MIRROR_URL = "s3://192.168.10:9000/downloads"
+#SSTATE_MIRRORS += "file://.* s3://192.168.10:9000/sstate-cache/PATH;downloadfilename=PATH"
+#INHERIT += "own-mirrors"
+#BB_NO_NETWORK = "0"
+#
+# Upload local caches to S3 using s3cmd (example):
+#   s3cmd --access_key=<USERNAME> --secret_key=<PASSWORD> put --recursive build/downloads s3://192.168.10:9000/downloads
+#   s3cmd --access_key=<USERNAME> --secret_key=<PASSWORD> put --recursive ${TOPDIR}/sstate-cache s3://192.168.10:9000/sstate-cache
+
+# Parallelism Options
+# These two options control how much parallelism BitBake should use
+BB_NUMBER_THREADS ?= "${@oe.utils.cpu_count()}"
+PARALLEL_MAKE ?= "-j ${@oe.utils.cpu_count()}"
+
+# Download directory
+DL_DIR ?= "${TOPDIR}/downloads"
+
+# Shared state directory
+SSTATE_DIR ?= "${TOPDIR}/sstate-cache"
+
+# Build directory
+TMPDIR = "${TOPDIR}/tmp"
+
+# Disable license checksum QA checks
+ERROR_QA:remove = "license-checksum"
+WARN_QA:remove = "license-checksum"
+
+# Package Management
+# You can switch between different package formats: rpm, deb, ipk
+PACKAGE_CLASSES ?= "package_rpm"
+
+# Extra image install
+# Allows you to customize the contents of images
+#CORE_IMAGE_EXTRA_INSTALL += "packagename"
+
+# Additional disk space
+EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
+
+# Disk Space Monitoring
+BB_DISKMON_DIRS ??= "\
+    STOPTASKS,${TMPDIR},1G,100K \
+    STOPTASKS,${DL_DIR},1G,100K \
+    STOPTASKS,${SSTATE_DIR},1G,100K \
+    STOPTASKS,/tmp,100M,100K \
+    HALT,${TMPDIR},100M,1K \
+    HALT,${DL_DIR},100M,1K \
+    HALT,${SSTATE_DIR},100M,1K \
+    HALT,/tmp,10M,1K"
+
+# Shared-state files from other locations
+#SSTATE_MIRRORS ?= "\
+#file://.* http://someserver.tld/share/sstate/PATH;downloadfilename=PATH \n \
+#file://.* file:///some/local/dir/sstate/PATH"
+
+
+# Download directory
+DL_DIR ?= "${TOPDIR}/downloads"
+
+# Shared state directory
+SSTATE_DIR ?= "${TOPDIR}/sstate-cache"
+
+# Build directory
+TMPDIR = "${TOPDIR}/tmp"

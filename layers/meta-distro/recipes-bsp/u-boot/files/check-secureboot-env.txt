@@ -1,0 +1,161 @@
+#
+# u-boot Environment Configuration: Secure Boot State Check
+#
+# This file contains u-boot environment variables and commands
+# for checking EFI Secure Boot state at boot time.
+#
+# Usage: 
+#   1. Source this file in u-boot environment or boot script:
+#      source ${scriptaddr} check-secureboot-env
+#
+#   2. Or run individual commands:
+#      run check_secureboot
+#      run check_secureboot_keys
+#      run show_secureboot_status
+#
+# Copyright (c) 2026 DISTRO Project
+# SPDX-License-Identifier: MIT
+#
+
+# ============================================================================
+# Command: check_secureboot
+# Purpose: Check if Secure Boot is enabled/disabled
+# ============================================================================
+setenv check_secureboot ' \
+  echo "Checking EFI Secure Boot state..."; \
+  if efi query var SecureBoot; then \
+    echo "SecureBoot variable is present"; \
+  else \
+    echo "ERROR: SecureBoot variable not found - UEFI boot required"; \
+    false; \
+  fi \
+'
+
+# ============================================================================
+# Command: check_secureboot_keys
+# Purpose: Check Secure Boot key configuration (PK, KEK, db, dbx)
+# ============================================================================
+setenv check_secureboot_keys ' \
+  echo ""; \
+  echo "--- Checking Secure Boot Keys ---"; \
+  echo ""; \
+  echo "Platform Key (PK):"; \
+  if efi query var PK; then \
+    echo "  Status: PRESENT (Secure Boot capable)"; \
+  else \
+    echo "  Status: MISSING (Secure Boot not available)"; \
+  fi; \
+  echo ""; \
+  echo "Key Exchange Key (KEK):"; \
+  if efi query var KEK; then \
+    echo "  Status: PRESENT"; \
+  else \
+    echo "  Status: MISSING"; \
+  fi; \
+  echo ""; \
+  echo "Authorized Signatures Database (db):"; \
+  if efi query var db; then \
+    echo "  Status: PRESENT (authorized binaries configured)"; \
+  else \
+    echo "  Status: MISSING"; \
+  fi; \
+  echo ""; \
+  echo "Forbidden Signatures Database (dbx):"; \
+  if efi query var dbx; then \
+    echo "  Status: PRESENT (revocation list configured)"; \
+  else \
+    echo "  Status: MISSING"; \
+  fi; \
+  echo ""; \
+'
+
+# ============================================================================
+# Command: show_secureboot_status
+# Purpose: Display comprehensive Secure Boot status summary
+# ============================================================================
+setenv show_secureboot_status ' \
+  echo ""; \
+  echo "========================================"; \
+  echo "EFI Secure Boot Status Report"; \
+  echo "========================================"; \
+  echo ""; \
+  \
+  if efi query var SecureBoot; then \
+    echo "✓ System supports UEFI Secure Boot"; \
+    if efi query var PK; then \
+      echo "✓ Platform Key is enrolled"; \
+      echo ""; \
+      echo "Secure Boot Configuration:"; \
+      if efi query var KEK; then \
+        echo "  KEK (Key Exchange Key): Enrolled"; \
+      else \
+        echo "  KEK (Key Exchange Key): NOT enrolled"; \
+      fi; \
+      if efi query var db; then \
+        echo "  db (Authorized Signatures): Configured"; \
+      else \
+        echo "  db (Authorized Signatures): NOT configured"; \
+      fi; \
+      if efi query var dbx; then \
+        echo "  dbx (Forbidden Signatures): Configured"; \
+      else \
+        echo "  dbx (Forbidden Signatures): NOT configured"; \
+      fi; \
+    else \
+      echo "✗ Platform Key is NOT enrolled"; \
+      echo "  Secure Boot is not active (permissive mode)"; \
+    fi; \
+  else \
+    echo "✗ System does NOT support UEFI Secure Boot"; \
+    echo "  This system is running in legacy boot mode"; \
+  fi; \
+  echo ""; \
+  echo "========================================"; \
+  echo ""; \
+'
+
+# ============================================================================
+# Command: dump_secureboot_vars
+# Purpose: Dump all Secure Boot-related EFI variables
+# ============================================================================
+setenv dump_secureboot_vars ' \
+  echo ""; \
+  echo "=== EFI Secure Boot Variables ==="; \
+  echo ""; \
+  echo "SecureBoot:"; \
+  efi query var SecureBoot -nv || echo "  (not found)"; \
+  echo ""; \
+  echo "PK (Platform Key):"; \
+  efi query var PK -nv || echo "  (not found)"; \
+  echo ""; \
+  echo "KEK (Key Exchange Key):"; \
+  efi query var KEK -nv || echo "  (not found)"; \
+  echo ""; \
+  echo "db (Authorized Signatures):"; \
+  efi query var db -nv || echo "  (not found)"; \
+  echo ""; \
+  echo "dbx (Forbidden Signatures):"; \
+  efi query var dbx -nv || echo "  (not found)"; \
+  echo ""; \
+'
+
+# ============================================================================
+# Alias shortcuts for convenience
+# ============================================================================
+setenv sb_check 'run check_secureboot'
+setenv sb_keys 'run check_secureboot_keys'
+setenv sb_status 'run show_secureboot_status'
+setenv sb_dump 'run dump_secureboot_vars'
+
+echo "Secure Boot environment commands loaded:"
+echo "  run check_secureboot     - Check SecureBoot variable"
+echo "  run check_secureboot_keys - Check all SB keys (PK, KEK, db, dbx)"
+echo "  run show_secureboot_status - Show comprehensive SB status"
+echo "  run dump_secureboot_vars  - Dump all EFI SB variables"
+echo ""
+echo "Aliases:"
+echo "  run sb_check   - Quick check"
+echo "  run sb_keys    - Check keys"
+echo "  run sb_status  - Full status"
+echo "  run sb_dump    - Dump variables"
+echo ""

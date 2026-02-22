@@ -1,0 +1,48 @@
+# Yocto Build artifacts
+build/
+tmp/
+sstate-cache/
+downloads/
+cache/
+
+# Repo tool
+.repo/
+
+# Fetched layers (managed by repo)
+layers/poky/
+layers/meta-openembedded/
+layers/meta-secure-core/
+layers/meta-updater/
+layers/meta-virtualization/
+
+# Keep custom layers
+!layers/meta-distro/
+
+# Build environment script (copied by repo)
+oe-init-build-env
+
+# BitBake generated files
+*.pyc
+*.pyo
+bitbake-cookerdaemon.log
+bitbake.lock
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+.*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log

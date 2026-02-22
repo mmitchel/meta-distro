@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <default revision="scarthgap" remote="yocto" sync-j="4"/>
+
+  <remote name="yocto" fetch="https://git.yoctoproject.org/git"/>
+  <remote name="oe" fetch="https://github.com/openembedded"/>
+  <remote name="github" fetch="https://github.com"/>
+
+  <!-- Yocto Poky Base -->
+  <project name="poky"
+           remote="yocto"
+           revision="scarthgap"
+           path="layers/poky">
+    <linkfile src="oe-init-build-env" dest="oe-init-build-env"/>
+  </project>
+
+  <!-- OpenEmbedded Meta Layers -->
+  <project name="meta-openembedded"
+           remote="oe"
+           revision="scarthgap"
+           path="layers/meta-openembedded"/>
+
+  <!-- Uptane/OTA Update Layer -->
+  <project name="uptane/meta-updater"
+           remote="github"
+           revision="scarthgap"
+           path="layers/meta-updater"/>
+
+  <!-- Virtualization Layer for Docker -->
+  <project name="meta-virtualization"
+           remote="yocto"
+           revision="scarthgap"
+           path="layers/meta-virtualization"/>
+
+  <!-- Security hardening layer -->
+  <project name="Wind-River/meta-secure-core"
+           remote="github"
+           revision="scarthgap"
+           path="layers/meta-secure-core"/>
+
+</manifest>

@@ -1,0 +1,19 @@
+# Allow members of the 'disk' group to access device-mapper control device
+# This enables non-root LVM operations when user is in 'disk' group
+# https://udev.freedesktop.org/
+# NOTE: Must run early before device-mapper subsystem initializes
+
+# device-mapper control device (character device)
+SUBSYSTEM=="misc", KERNEL=="mapper/control", GROUP="disk", MODE="0660"
+KERNEL=="mapper/control", GROUP="disk", MODE="0660"
+
+# All device-mapper devices (block devices)
+SUBSYSTEM=="block", KERNEL=="dm-*", GROUP="disk", MODE="0660"
+KERNEL=="dm-*", GROUP="disk", MODE="0660"
+
+# device-mapper character devices
+SUBSYSTEM=="char", KERNEL=="device-mapper", GROUP="disk", MODE="0660"
+
+# Loop devices (already covered by other rules but included for completeness)
+KERNEL=="loop[0-9]*", GROUP="disk", MODE="0660"
+SUBSYSTEM=="block", KERNEL=="loop[0-9]*", GROUP="disk", MODE="0660"

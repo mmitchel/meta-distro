@@ -1,0 +1,99 @@
+/* 
+ * u-boot Boot Script: Check EFI Secure Boot State
+ *
+ * This script checks the current EFI Secure Boot state variable
+ * and displays diagnostic information about the system's Secure Boot status.
+ *
+ * u-boot syntax: This is compiled to a .scr binary via mkimage
+ * Command: mkimage -T script -C none -n "check-secureboot" -d check-secureboot.txt check-secureboot.scr
+ *
+ * Copyright (c) 2026 DISTRO Project
+ * SPDX-License-Identifier: MIT
+ */
+
+echo "=========================================="
+echo "EFI Secure Boot State Check Script"
+echo "=========================================="
+echo ""
+
+/* Check if EFI subsystem is available */
+if efi query var SecureBoot; then
+    echo "✓ EFI SecureBoot variable found"
+else
+    echo "✗ EFI SecureBoot variable not found"
+    echo "  System may not be running in UEFI mode"
+    exit 1
+fi
+
+echo ""
+echo "--- Secure Boot Configuration ---"
+echo ""
+
+/* Query the SecureBoot state variable */
+/* SecureBoot: UINT8, 0x00=Disabled, 0x01=Enabled */
+echo "Checking SecureBoot state..."
+
+if efi query var SecureBoot; then
+    echo "✓ SecureBoot variable is present and readable"
+    echo ""
+    echo "SecureBoot Variable Details:"
+    efi query var SecureBoot -nv
+    echo ""
+else
+    echo "✗ SecureBoot variable is not readable"
+    exit 1
+fi
+
+echo ""
+echo "--- Platform Key Status ---"
+echo ""
+
+/* Check if Platform Key (PK) is set */
+if efi query var PK; then
+    echo "✓ Platform Key (PK) is set"
+    echo "  Secure Boot capable: YES"
+else
+    echo "✗ Platform Key (PK) is not set"
+    echo "  Secure Boot capable: NO"
+fi
+
+echo ""
+echo "--- Key Exchange Key Status ---"
+echo ""
+
+/* Check if Key Exchange Key (KEK) is set */
+if efi query var KEK; then
+    echo "✓ Key Exchange Key (KEK) is set"
+    echo "  Secure Boot configured: YES"
+else
+    echo "✗ Key Exchange Key (KEK) is not set"
+    echo "  Secure Boot configured: NO"
+fi
+
+echo ""
+echo "--- Signature Database Status ---"
+echo ""
+
+/* Check if db (authorized signature database) is set */
+if efi query var db; then
+    echo "✓ Authorized Signature Database (db) is set"
+    echo "  Authorized boot binaries configured: YES"
+else
+    echo "✗ Authorized Signature Database (db) is not set"
+    echo "  Authorized boot binaries configured: NO"
+fi
+
+/* Check if dbx (forbidden signature database) is set */
+if efi query var dbx; then
+    echo "✓ Forbidden Signature Database (dbx) is set"
+    echo "  Revocation list configured: YES"
+else
+    echo "✗ Forbidden Signature Database (dbx) is not set"
+    echo "  Revocation list configured: NO"
+fi
+
+echo ""
+echo "=========================================="
+echo "Secure Boot Check Complete"
+echo "=========================================="
+echo ""

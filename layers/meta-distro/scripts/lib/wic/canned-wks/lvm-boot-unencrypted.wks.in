@@ -1,0 +1,26 @@
+# short-description: Create disk image with LVM-based layout (unencrypted)
+# long-description: Creates a disk image with:
+# - EFI System Partition (ESP) for UEFI boot (512MB, VFAT, unencrypted)
+# - Extended Boot Loader Partition (XBOOTLDR) for kernels and initramfs (1GB, ext4, unencrypted)
+# - Unencrypted LVM physical volume containing:
+#   - Root logical volume (rootfs, ext4)
+#   - Var logical volume (varfs, ext4, optional for OSTree compatibility)
+#
+# Uses lvmrootfs.py WIC plugin for automated LVM setup (NO LUKS encryption)
+# Boot sequence: Initramfs activates LVM → mounts rootfs
+# WARNING: For testing and development only. Use lvm-boot-encrypted.wks.in for production.
+# REQUIRED HOST SETUP: User in 'disk' group for non-root loop device access
+
+# Single partition using lvmrootfs plugin with encryption disabled
+# The plugin handles all disk layout: EFI (512MB) + XBOOTLDR (1GB) + unencrypted LVM
+# Sourceparams:
+#   - lvm-vg-name: Volume group name (default: vg0)
+#   - lvm-rootfs-name: Root LV name (default: rootlv)
+#   - lvm-rootfs-uuid: Root LV filesystem UUID (optional, default: generated)
+#   - lvm-volumes: Additional volumes as "name:size,name:size" (optional)
+#   - lvm-volumes-uuids: UUIDs for volumes as "name:uuid,name:uuid" (optional)
+#   - luks-passphrase: "NONE" to disable LUKS encryption (required)
+#   - luks-name: LUKS device name (not used when disabled)
+part / --source lvmrootfs --sourceparams="lvm-vg-name=vg0,lvm-rootfs-name=rootlv,lvm-rootfs-uuid=${FSUUID_ROOT},lvm-volumes=varfs:100%FREE,lvm-volumes-uuids=varfs:${FSUUID_VAR},luks-passphrase=NONE,luks-name=cryptroot" --size 4096M
+
+bootloader --ptable gpt --timeout=5 --append="root=UUID=${FSUUID_ROOT} rootflags=ro rootfstype=ext4 systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"

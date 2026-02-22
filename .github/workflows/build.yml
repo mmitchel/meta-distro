@@ -1,0 +1,196 @@
+name: Yocto Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      machine:
+        description: 'Target machine'
+        required: false
+        default: 'qemux86-64'
+      image:
+        description: 'Image to build'
+        required: false
+        default: 'core-image-minimal'
+      clean_build:
+        description: 'Clean build (remove sstate and downloads)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  # Configuration variables - can be overridden via repository variables
+  YOCTO_DISTRO: ${{ vars.YOCTO_DISTRO || 'poky-sota' }}
+  YOCTO_MACHINE: ${{ vars.YOCTO_MACHINE || 'qemux86-64' }}
+  YOCTO_IMAGE: ${{ vars.YOCTO_IMAGE || 'core-image-minimal' }}
+  BUILD_DIR: build
+  DL_DIR: downloads
+  SSTATE_DIR: sstate-cache
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 480  # 8 hours max
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Free disk space
+        run: |
+          # Remove unnecessary tools to free up space
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h
+
+      - name: Install Yocto dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gawk wget git diffstat unzip texinfo \
+            gcc build-essential chrpath socat cpio python3 python3-pip \
+            python3-pexpect xz-utils debianutils iputils-ping python3-git \
+            python3-jinja2 libegl1-mesa libsdl1.2-dev pylint3 xterm \
+            python3-subunit mesa-common-dev zstd liblz4-tool lz4 \
+            python3-distutils repo
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Cache downloads
+        if: ${{ !inputs.clean_build }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DL_DIR }}
+          key: yocto-downloads-${{ hashFiles('manifests/default.xml') }}
+          restore-keys: |
+            yocto-downloads-
+
+      - name: Cache sstate
+        if: ${{ !inputs.clean_build }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SSTATE_DIR }}
+          key: yocto-sstate-${{ env.YOCTO_MACHINE }}-${{ github.sha }}
+          restore-keys: |
+            yocto-sstate-${{ env.YOCTO_MACHINE }}-
+            yocto-sstate-
+
+      - name: Initialize repo
+        run: |
+          repo init -u file://$(pwd)/manifests -b master -m default.xml
+          repo sync -j$(nproc)
+
+      - name: Setup build environment
+        run: |
+          TEMPLATECONF=$(pwd)/layers/meta-distro/conf/templates \
+            source layers/poky/oe-init-build-env ${{ env.BUILD_DIR }}
+
+          # Override configuration if workflow inputs are provided
+          if [ -n "${{ inputs.machine }}" ]; then
+            echo 'MACHINE = "${{ inputs.machine }}"' >> conf/local.conf
+          fi
+
+          # Use environment variables for configuration
+          echo 'DISTRO = "${{ env.YOCTO_DISTRO }}"' >> conf/local.conf
+
+          # Optimize for CI
+          echo 'BB_NUMBER_THREADS = "$(nproc)"' >> conf/local.conf
+          echo 'PARALLEL_MAKE = "-j $(nproc)"' >> conf/local.conf
+
+          # Set download and sstate directories
+          echo 'DL_DIR = "${{ github.workspace }}/${{ env.DL_DIR }}"' >> conf/local.conf
+          echo 'SSTATE_DIR = "${{ github.workspace }}/${{ env.SSTATE_DIR }}"' >> conf/local.conf
+
+          # Additional CI optimizations
+          echo 'BB_GENERATE_MIRROR_TARBALLS = "0"' >> conf/local.conf
+          echo 'BB_DISKMON_DIRS = ""' >> conf/local.conf
+
+          cat conf/local.conf
+
+      - name: Build image
+        run: |
+          source layers/poky/oe-init-build-env ${{ env.BUILD_DIR }}
+
+          IMAGE_TARGET="${{ inputs.image || env.YOCTO_IMAGE }}"
+          echo "Building ${IMAGE_TARGET}..."
+
+          bitbake ${IMAGE_TARGET}
+
+      - name: Prepare build artifacts
+        if: success()
+        run: |
+          mkdir -p artifacts
+
+          # Copy WIC images
+          if [ -d "${{ env.BUILD_DIR }}/tmp/deploy/images/${{ env.YOCTO_MACHINE }}" ]; then
+            cd "${{ env.BUILD_DIR }}/tmp/deploy/images/${{ env.YOCTO_MACHINE }}"
+
+            # Copy WIC images and checksums
+            cp -v *.wic* ../../../../../../../artifacts/ 2>/dev/null || true
+            cp -v *.manifest ../../../../../../../artifacts/ 2>/dev/null || true
+
+            # Create a version info file
+            cd ../../../../../../../
+            cat > artifacts/build-info.txt << EOF
+          Build Information
+          ==================
+          Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Machine: ${{ env.YOCTO_MACHINE }}
+          Distro: ${{ env.YOCTO_DISTRO }}
+          Image: ${{ env.YOCTO_IMAGE }}
+          Git SHA: ${{ github.sha }}
+          Git Ref: ${{ github.ref }}
+          Workflow: ${{ github.workflow }}
+          Run Number: ${{ github.run_number }}
+          EOF
+          fi
+
+          ls -lh artifacts/
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yocto-images-${{ env.YOCTO_MACHINE }}-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 30
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Machine**: ${{ env.YOCTO_MACHINE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Distro**: ${{ env.YOCTO_DISTRO }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ env.YOCTO_IMAGE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "artifacts/build-info.txt" ]; then
+            echo "### Build Info" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat artifacts/build-info.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          # Show last build errors if available
+          if [ -f "${{ env.BUILD_DIR }}/tmp/log/cooker/*/console-latest.log" ]; then
+            echo "=== Last 100 lines of build log ==="
+            tail -n 100 ${{ env.BUILD_DIR }}/tmp/log/cooker/*/console-latest.log
+          fi

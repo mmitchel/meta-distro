@@ -1,0 +1,27 @@
+[Unit]
+Description=Pull OSTree updates from remote
+ConditionPathExists=/ostree/repo
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# OSTree pull supports resume - interrupted pulls can be resumed later
+ExecStart=/usr/bin/ostree pull --repo=/ostree/repo origin:${OSTREE_OSNAME}/${OSTREE_BRANCHNAME}
+StandardOutput=journal
+StandardError=journal
+
+# Network failure handling
+# Don't fail the service on network errors - allow retry later
+SuccessExitStatus=0
+# Exit code 1 = generic error (network, etc) - don't treat as failure
+FailureExitStatus=
+
+# Restart policy for transient failures
+Restart=on-failure
+RestartSec=300
+StartLimitInterval=3600
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

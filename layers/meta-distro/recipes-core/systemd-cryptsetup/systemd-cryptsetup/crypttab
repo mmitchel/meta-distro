@@ -1,0 +1,26 @@
+# /etc/crypttab - systemd-cryptsetup configuration
+# Format: name encrypted_device key_file options
+#
+# For LUKS volumes with automatic /dev/null key attempt and passphrase fallback:
+# cryptlvm UUID=<uuid> /dev/null luks,discard,keyfile-timeout=5s
+#
+# The keyfile-timeout option causes systemd-cryptsetup to:
+# 1. First try to unlock with /dev/null key file (timeout after 5s)
+# 2. If that fails, prompt for passphrase interactively
+#
+# For key file authentication only (no fallback):
+# cryptlvm /dev/sda3 /etc/cryptsetup-keys.d/cryptlvm.key luks,discard
+#
+# For passphrase prompt only:
+# cryptlvm /dev/sda3 none luks,discard,tries=3
+#
+# Options:
+#   luks              - Use LUKS encryption
+#   discard           - Enable TRIM support for SSDs (optional)
+#   tries=3           - Number of password attempts (default: 3)
+#   timeout=0         - Disable timeout for password entry
+#   keyfile-timeout=5s - Try key file for 5s before falling back to passphrase
+
+# Default: Try /dev/null key first, then prompt for passphrase
+# Adjust device path for your system (use UUID for stability):
+cryptlvm /dev/sda3 /dev/null luks,discard,keyfile-timeout=5s,tries=3

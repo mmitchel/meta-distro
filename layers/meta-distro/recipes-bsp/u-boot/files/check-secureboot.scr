@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+#
+# u-boot Boot Script: Check EFI Secure Boot State
+#
+# This script checks the current EFI Secure Boot state variable
+# and displays the status during boot.
+#
+# Usage: Run from u-boot prompt or include in boot sequence
+#
+# Copyright (c) 2026 DISTRO Project
+# SPDX-License-Identifier: MIT
+#
+
+# Echo banner
+echo "=== EFI Secure Boot State Check ==="
+echo ""
+
+# Check if EFI is available
+if ! efi query var SecureBoot > /dev/null 2>&1; then
+    echo "WARN: EFI SecureBoot variable not available"
+    echo "      System may not be running in UEFI mode"
+    echo ""
+    exit 1
+fi
+
+# Read SecureBoot variable
+# SecureBoot variable format: UINT8 (0x00 = disabled, 0x01 = enabled)
+efi query var SecureBoot
+secureboot_status=$?
+
+echo ""
+echo "Parsing SecureBoot variable..."
+echo ""
+
+# Note: efi query var returns the raw variable value
+# We need to check the actual EFI variable contents
+# The SecureBoot variable is typically stored in global scope
+
+# Attempt to read the variable more directly
+if efi var read SecureBoot > /dev/null 2>&1; then
+    # SecureBoot is present and readable
+    
+    # Read into environment variable for checking
+    efi var read SecureBoot secureboot_value
+    
+    if [ "$secureboot_value" = "01" ]; then
+        echo "✓ Secure Boot Status: ENABLED"
+        echo ""
+        echo "The system is running with UEFI Secure Boot enabled."
+        echo "Boot binaries must be signed with valid EFI Secure Boot keys."
+        echo ""
+        exit 0
+    elif [ "$secureboot_value" = "00" ]; then
+        echo "✗ Secure Boot Status: DISABLED"
+        echo ""
+        echo "The system is running without UEFI Secure Boot protection."
+        echo "Boot binaries do not require Secure Boot signatures."
+        echo ""
+        exit 0
+    else
+        echo "? Secure Boot Status: UNKNOWN"
+        echo "  Variable value: $secureboot_value"
+        echo ""
+        exit 2
+    fi
+else
+    # Fallback: try to determine status from other variables
+    echo "! Cannot directly read SecureBoot variable"
+    echo "  Checking alternative methods..."
+    echo ""
+    
+    # Check PKexist (Platform Key exists) as indicator
+    if efi query var PKexist > /dev/null 2>&1; then
+        echo "  Platform Key (PK) exists: System supports Secure Boot"
+        efi query var PKexist
+        echo ""
+        exit 0
+    else
+        echo "  No Secure Boot keys detected"
+        echo ""
+        exit 1
+    fi
+fi

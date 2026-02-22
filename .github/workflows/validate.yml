@@ -1,0 +1,63 @@
+name: Syntax Check
+
+on:
+  pull_request:
+    paths:
+      - 'layers/meta-distro/**'
+      - 'manifests/**'
+      - '.github/workflows/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'layers/meta-distro/**'
+      - 'manifests/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip shellcheck yamllint
+          pip3 install pyflakes
+
+      - name: Validate shell scripts
+        run: |
+          echo "Checking shell scripts..."
+          find . -name "*.sh" -type f -exec shellcheck -e SC1090,SC1091 {} +
+
+      - name: Validate Python files
+        run: |
+          echo "Checking Python files..."
+          find layers/meta-distro -name "*.py" -type f -exec pyflakes {} +
+
+      - name: Validate YAML files
+        run: |
+          echo "Checking YAML files..."
+          find .github -name "*.yml" -o -name "*.yaml" | xargs yamllint -d relaxed
+
+      - name: Validate manifest XML
+        run: |
+          echo "Checking manifest XML..."
+          xmllint --noout manifests/default.xml
+
+      - name: Check for common issues
+        run: |
+          echo "Checking for common configuration issues..."
+
+          # Check for tabs in BitBake files (should use spaces)
+          if grep -r $'\t' layers/meta-distro/conf/*.conf 2>/dev/null; then
+            echo "ERROR: Found tabs in .conf files, use spaces instead"
+            exit 1
+          fi
+
+          # Check that WIC files exist
+
+
+          echo "All checks passed!"

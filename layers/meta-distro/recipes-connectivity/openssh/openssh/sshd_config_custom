@@ -1,0 +1,15 @@
+# SSH configuration for root and user access
+# Root: SSH only (console/serial blocked)
+# Users: SSH + console + serial
+
+# Permit root login via SSH
+PermitRootLogin yes
+
+# Use SSH keys for authentication (more secure than passwords)
+PubkeyAuthentication yes
+
+# Allow password authentication for users (optional, can be disabled for key-only)
+PasswordAuthentication yes
+
+# Disable empty passwords
+PermitEmptyPasswords no
